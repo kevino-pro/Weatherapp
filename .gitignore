@@ -1,2 +1,3 @@
 .venv/
 __pycache__/
+self.api_key = '8ab027fd7f3da3ad99c890d0210deb42'

@@ -1,21 +1,36 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+api_key = os.getenv("WEATHER_API_KEY")
+
+if api_key:
+    print(f"API key succesvol geladen: {api_key[:4]}...")
+else:
+    print("Fout: kon niet vinden")
+
 import sys
 import requests
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QPushButton, QLabel, QMessageBox
+    QLineEdit, QPushButton, QLabel, QMessageBox,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QTimer, Qt
+
+# QTimer voor de een seconde laadtijd bij het ophalen van gegevens.
 
 class WeatherApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("What's the weather")
-        self.setMinimumWidth(400)
-
+        self.setWindowTitle("What's the weather?")
+        self.resize(400, 200)
         self.api_key = '8ab027fd7f3da3ad99c890d0210deb42'
+        
         # GUI elementen
         self.city_input = QLineEdit()
         self.city_input.setPlaceholderText("Vul jouw stad in...")
+        self.city_input.returnPressed.connect(self.get_weather)
 
         self.search_button = QPushButton("Zoek")
         self.search_button.clicked.connect(self.get_weather)
@@ -28,7 +43,7 @@ class WeatherApp(QWidget):
         self.wind_label = QLabel("Windsnelheid: --")
         self.humidity_label = QLabel("Luchtvochtigheid: --")
 
-        # Layout opbouwen
+        # Layout
         layout = QVBoxLayout()
 
         # Input en knop horizontaal
@@ -38,16 +53,17 @@ class WeatherApp(QWidget):
         layout.addLayout(input_layout)
 
         # Resultaat labels
-        layout.addWidget(self.weather_label)
-        layout.addWidget(self.temp_label)
-        layout.addWidget(self.feels_like_label)
-        layout.addWidget(self.visibility_label)
-        layout.addWidget(self.wind_label)
-        layout.addWidget(self.humidity_label)
+        layout.addWidget(self.weather_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.temp_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.feels_like_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.visibility_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.wind_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.humidity_label, alignment=Qt.AlignmentFlag.AlignCenter)
+
 
         layout.addStretch()
         self.setLayout(layout)
-
+    
     def get_weather(self):
         city = self.city_input.text().strip()
         if not city:
@@ -89,3 +105,4 @@ if __name__ == "__main__":
     window = WeatherApp()
     window.show()
     sys.exit(app.exec())
+    
