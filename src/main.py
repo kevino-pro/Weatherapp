@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-api_key = os.getenv("WEATHER_API_KEY")
+api_key = os.getenv("OPENWEATHER_API_KEY")
 
 if api_key:
     print(f"API key succesvol geladen: {api_key[:4]}...")
@@ -14,26 +14,89 @@ import sys
 import requests
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QPushButton, QLabel, QMessageBox,
+    QLineEdit, QPushButton, QLabel, QMessageBox, QFontDialog
 )
+from PySide6.QtGui import QFont, QFontDatabase, QPalette, QPixmap
 from PySide6.QtCore import QTimer, Qt
 
 
-
 class WeatherApp(QWidget):
+
+    WEATHER_EMOJIS = {
+        "Clear": "☀️",
+        "Clouds": "⛅",
+        "Drizzle": "🌧️",
+        "Rain": "🌧️",
+        "Thunderstorm": "⛈️",
+        "Snow": "❄️",
+        "Mist": "🌫️",
+        "Smoke": "💨",
+        "Haze": "🌫️",
+        "Dust": "🏜️",
+        "Fog": "🌫️",
+        "Sand": "🏜️",
+        "Ash": "🌋",
+        "Squall": "🌪️",
+        "Tornado": "🌪️",
+    }
+
+    DESCRIPTION_EMOJIS = {
+        "few clouds": "🌤️",
+        "scattered clouds": "⛅",
+        "broken clouds": "☁️",
+        "overcast clouds": "☁️",
+        "light snow": "🌨️",
+        "sleet": "🌨️",
+        "shower rain": "🌧️",
+        "hurricane": "🌀",
+    }
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("What's the weather?")
         self.resize(400, 300)
 
+        font = QFont("Times New Roman", 50)
+        self.setFont(font)
+
+        self.background_image_path = r"C:\Users\esdra\Downloads\pexels-jesschen-32896733.jpg"
+        self.set_background(self.background_image_path)
+
+        self.setStyleSheet("""
+            QLabel {
+                  background-color: transparent;
+        color: white;
+    }
+    QLineEdit {
+        background-color: rgba(255, 255, 255, 200);
+        border: 2px solid #3498db;
+        border-radius: 5px;
+        padding: 5px;
+    }
+    QPushButton {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 8px 15px;
+    }
+    QPushButton:hover {
+        background-color: #2980b9;
+    }
+    QMessageBox {
+        color: black;
+    }
+    QMessageBox QLabel {
+        color: black;
+            }
+        """)
+
         self.api_key = api_key
-       
-        # QTimer voor de een seconde laadtijd bij het ophalen van gegevens.
+
         self.zoek_timer = QTimer(self)
         self.zoek_timer.setSingleShot(True)
         self.zoek_timer.timeout.connect(self.get_weather)
 
-        # GUI elementen
         self.city_input = QLineEdit()
         self.city_input.setPlaceholderText("Vul jouw stad in...")
         self.city_input.returnPressed.connect(self.get_weather)
@@ -41,32 +104,52 @@ class WeatherApp(QWidget):
 
         self.search_button = QPushButton("Zoek")
         self.search_button.clicked.connect(self.get_weather)
-        
-        # Labels voor weergegevens
-        self.weather_label = QLabel("Weer: --")
-        self.temp_label = QLabel("Temperatuur: --")
-        self.feels_like_label = QLabel("Voelt als: --")
-        self.visibility_label = QLabel("Zichtbaarheid: --")
-        self.wind_label = QLabel("Windsnelheid: --")
-        self.humidity_label = QLabel("Luchtvochtigheid: --")
 
+        self.weather_logo = QLabel("🌞")
+        self.weather_label = QLabel("🌤️Weer: --")
+        self.temp_label = QLabel("🌡️Temperatuur: --")
+        self.feels_like_label = QLabel("🤔Voelt als: --")
+        self.visibility_label = QLabel("👁️Zichtbaarheid: --")
+        self.wind_label = QLabel("💨Windsnelheid: --")
+        self.humidity_label = QLabel("💧Luchtvochtigheid: --")
         self.initUI()
+
+    def set_background(self, image_path):
+        palette = QPalette()
+        pixmap = QPixmap(image_path)
+        scaled = pixmap.scaled(
+            self.size(),
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+        palette.setBrush(QPalette.ColorRole.Window, scaled)
+        self.setPalette(palette)
+        self.setAutoFillBackground(True)
+
+    def resizeEvent(self, event):
+        self.set_background(self.background_image_path)
+        super().resizeEvent(event)
+
+    def get_emoji(self, main, description):
+        emoji = self.DESCRIPTION_EMOJIS.get(description.lower())
+        if emoji:
+            return emoji
+        return self.WEATHER_EMOJIS.get(main, "🌞")
 
     def user_typing(self):
         self.zoek_timer.stop()
         self.zoek_timer.start(1500)
 
     def initUI(self):
-        # Layout
         layout = QVBoxLayout()
 
-        # Input en knop horizontaal
         input_layout = QHBoxLayout()
         input_layout.addWidget(self.city_input)
         input_layout.addWidget(self.search_button)
         layout.addLayout(input_layout)
 
-        # Resultaat labels
+        layout.addWidget(self.weather_logo, alignment=Qt.AlignmentFlag.AlignLeft)
+        self.weather_logo.setFont(QFont("Segoe UI Emoji", 110))
         layout.addWidget(self.weather_label, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.temp_label, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.feels_like_label, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -76,7 +159,7 @@ class WeatherApp(QWidget):
 
         layout.addStretch()
         self.setLayout(layout)
-    
+
     def get_weather(self):
         self.zoek_timer.stop()
 
@@ -89,31 +172,35 @@ class WeatherApp(QWidget):
             url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={self.api_key}&units=metric"
             response = requests.get(url)
             data = response.json()
-
+            print(data)
+            
             if data.get("cod") == "404":
                 QMessageBox.information(self, "Niet gevonden", f"Heh? Waar ligt '{city}'?. Try again!")
                 return
 
-            # Data ophalen
             weather = data["weather"][0]["main"]
+            description = data["weather"][0]["description"]
             temp = round(data["main"]["temp"])
             feels_like = round(data["main"]["feels_like"])
-            visibility = data["visibility"] / 1000  # Verandert meter naar km
+            visibility = data["visibility"] / 1000
             wind_speed = data["wind"]["speed"]
             humidity = data["main"]["humidity"]
 
-            # Labels bijwerken
-            self.weather_label.setText(f"Weer: {weather}")
-            self.temp_label.setText(f"Temperatuur: {temp}°C")
-            self.feels_like_label.setText(f"Voelt als: {feels_like}°C")
-            self.visibility_label.setText(f"Zichtbaarheid: {visibility:.2f} km")  # Show visibility in km
-            self.wind_label.setText(f"Windsnelheid: {wind_speed} m/s")
-            self.humidity_label.setText(f"Luchtvochtigheid: {humidity}%")
+            emoji = self.get_emoji(weather, description)
+            self.weather_logo.setText(emoji)
+
+            self.weather_label.setText(f"🌤️Weer: {weather} ({description})")
+            self.temp_label.setText(f"🌡️Temperatuur: {temp}°C")
+            self.feels_like_label.setText(f"🤔Voelt als: {feels_like}°C")
+            self.visibility_label.setText(f"👁️Zichtbaarheid: {visibility:.2f} km")
+            self.wind_label.setText(f"💨Windsnelheid: {wind_speed} m/s")
+            self.humidity_label.setText(f"💧Luchtvochtigheid: {humidity}%")
 
         except requests.exceptions.RequestException as e:
             QMessageBox.critical(self, "Netwerkfout", f"Kan geen verbinding maken: {e}")
         except KeyError:
             QMessageBox.critical(self, "Datafout", "Onverwachte respons van de API.")
+
 
 if __name__ == "__main__":
     print("1. app word gemaakt...")
@@ -127,4 +214,3 @@ if __name__ == "__main__":
 
     print("4. app start...")
     sys.exit(app.exec())
-    
